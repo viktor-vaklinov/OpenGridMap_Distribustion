@@ -1,0 +1,20 @@
+1. Download and install PostGis from link: http://postgis.net/install/
+
+2. Download map data
+The testing data used by this project is DataInstallation/oberbayern-latest.osm.pbf, which is downloaded from link http://download.geofabrik.de/europe/germany/bayern/oberbayern.html.
+
+3. Import map data
+To import the .osm.pbf data, we need a tool called Osm2pgsql, see link http://wiki.openstreetmap.org/wiki/Osm2pgsql#Special_.27tags.27 for detailed installation. 
+After we install it,execute following commands to your PostGis
+	createdb gis
+	psql -d gis -c 'CREATE EXTENSION postgis; CREATE EXTENSION hstore;'
+	osm2pgsql --create --database gis oberbayern-latest.osm.pbf
+(More information in link https://github.com/openstreetmap/osm2pgsql)
+
+4. Import table for transformers
+	psql gis < DataInstallation/student_transformers.sql
+
+5. (Only if necessary) Extend PostGis with voronoi function
+psql -U postgres gis
+CREATE EXTENSION plpythonu
+psql -d gis -f DataInstallation/voronoi.sql ;
