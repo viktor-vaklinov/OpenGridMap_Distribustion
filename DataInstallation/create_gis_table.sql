@@ -52,7 +52,7 @@ CREATE TABLE node (
 	max_capacity int,
 	max_load int,
 	way geometry(Point,900913),	
-	projected_way geometry(Point,900913)
+	origin_house_way geometry(Point,900913)
 );
 
 CREATE SEQUENCE node_id_seq
