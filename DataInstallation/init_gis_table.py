@@ -5,9 +5,11 @@ import networkx as nx
 def connect_to_psql(dbname='gis', user='zhou', password='', hostaddr='', port='5432', remote=False):
     try:
         if remote:  
-            conn =  psycopg2.connect("dbname=%s user=%s hostaddress=%s port=%s password=%s"%(dbname, user, hostaddr, port, password))
+            token = "dbname=%s user=%s host=%s port=%s password=%s"%(dbname, user, hostaddr, port, password)
+            conn =  psycopg2.connect(token)
         else:
             conn = psycopg2.connect("dbname=%s user=%s"%(dbname, user))
+        print 'Connection established. DNS info: %s' % conn.dsn
     except:
         print 'Fail to connect to Postgres Server'
     return conn
@@ -44,7 +46,7 @@ def init_node(conn, reg_osm_id, road_type, radius):
     cur.execute("CREATE TABLE IF NOT EXISTS temp_road_house (hid  bigint, hway geometry(Point,900913), rway geometry(LineString,900913), distance float);")
     
     # clean entries
-    cur.execute("DELETE FROM temphsrd;")
+    cur.execute("DELETE FROM temp_road_house;")
     
     cur.execute("INSERT INTO temp_road_house "
                 "(SELECT t1.osm_id, t1.ct_way, t2.way, " 
