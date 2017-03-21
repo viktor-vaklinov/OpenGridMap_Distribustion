@@ -23,7 +23,8 @@ def init_transformer(conn, reg_osm_id):
     cur.close()
 
 
-def init_apprx_road(conn, reg_osm_id, road_type="('residential')"):
+def init_apprx_road(conn, reg_osm_id, road_type=['residential']):
+    road_type = str(road_type).replace("[", "(").replace("]",")")
     cur = conn.cursor()
     # Select roads within GARCHING and store its start and end point
     cur.execute("INSERT INTO apprx_road(osm_id, start_way, end_way) "
@@ -37,8 +38,8 @@ def init_apprx_road(conn, reg_osm_id, road_type="('residential')"):
 
 
 def init_node(conn, reg_osm_id, road_type, radius):
+    road_type = str(road_type).replace("[", "(").replace("]",")")    
     cur = conn.cursor()
-    
     # Create intermediate table to store houses projected to nearest roads of specified types and within a specific radius
     cur.execute("CREATE TABLE IF NOT EXISTS temp_road_house (hid  bigint, hway geometry(Point,900913), rway geometry(LineString,900913), distance float);")
     
@@ -46,7 +47,8 @@ def init_node(conn, reg_osm_id, road_type, radius):
     cur.execute("DELETE FROM temphsrd;")
     
     cur.execute("INSERT INTO temp_road_house "
-                "(SELECT t1.osm_id, t1.ct_way, t2.way, ST_Distance(t1.ct_way, t2.way) "
+                "(SELECT t1.osm_id, t1.ct_way, t2.way, " 
+                "ST_Distance(ST_Transform(t1.ct_way,26986), ST_Transform(t2.way,26986)) "
                 "FROM "
                 "(SELECT osm_id, ST_Centroid(way) AS ct_way FROM planet_osm_polygon "
                 "WHERE ST_Within(way,(SELECT way FROM planet_osm_polygon WHERE osm_id = %d)) "
@@ -58,8 +60,8 @@ def init_node(conn, reg_osm_id, road_type, radius):
                 %(reg_osm_id, road_type, reg_osm_id, radius))
 
     # Store house nodes, selecting the projected house with the shortest distance to original location
-    cur.execute("INSERT INTO node(osm_id, node_type,  max_capacity, max_load, way, projected_way) "
-                "(SELECT hid, \'house\', 0, 0, hway, ST_ClosestPoint(rway, hway) "
+    cur.execute("INSERT INTO node(osm_id, node_type,  max_capacity, max_load, way, origin_house_way) "
+                "(SELECT hid, \'house\', 0, 0, ST_ClosestPoint(rway, hway), hway "
                 "FROM temp_road_house "
                 "WHERE (hway, distance) IN "
                 "(SELECT hway, MIN(distance) FROM temp_road_house "
@@ -87,10 +89,14 @@ def init_node(conn, reg_osm_id, road_type, radius):
     
 # Initial database
 GARCHING = -30971
-conn = connect_to_psql(dbname='gis', user='jennyzhou')
+road_type=['motorway', 'trunk', 'primary', 'secondary', 'unclassified',
+           'tertiary', 'residential', 'service', 'motorway_link', 
+           'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link', 
+           'living_street', 'pedestrian', 'road', 'footway']
+conn = connect_to_psql(dbname='gis', user='zhou')
 # init_transformer(conn, reg_osm_id=GARCHING) 
-# init_apprx_road(conn, reg_osm_id=GARCHING, road_type="('residential')")
-# init_node(conn, reg_osm_id=GARCHING, road_type="('residential')", radius=60)
+init_apprx_road(conn, reg_osm_id=GARCHING, road_type=road_type)
+init_node(conn, reg_osm_id=GARCHING, road_type=road_type, radius=60)
 conn.close()
 
 
