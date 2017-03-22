@@ -88,3 +88,15 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+*.lp
+
+*.ilp
+
+.idea/
+graph.pdf
+Plan A for optimization problem.ipynb
+
+Plan B for optimization problem.ipynb
+
+Testing a complicated example of a transshipment model .ipynb
