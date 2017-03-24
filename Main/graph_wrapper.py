@@ -3,6 +3,8 @@ import json
 import shapely.geometry as geo
 from geopy.distance import vincenty
 from itertools import tee
+import itertools
+import random
 import networkx as nx
 import re
 
@@ -141,7 +143,7 @@ def fetch_split_roads(conn):
     roads = cur.fetchall()
     cur.close()
     return json.loads(roads[0][0])['coordinates']
-    
+
 
 def generate_connected_subgraph(roads):
     # Generate subgraphs by connecting along roads
@@ -152,7 +154,7 @@ def generate_connected_subgraph(roads):
         for n1, n2 in zip(sid, eid):
             graph.add_edge(tuple(n1), tuple(n2))        
     subgraph = list(nx.connected_component_subgraphs(graph))[0]
-    
+
     # Assign edge length
     for e1, e2 in subgraph.edges_iter():
         subgraph[e1][e2]["length"] = vincenty(e1, e2).kilometers  
@@ -194,3 +196,44 @@ def merge_roads(roads, meters):
             if vincenty(i[-1], j[0]).kilometers != 0.0 and vincenty(i[-1], j[0]).kilometers <= meters/1000:
                 j[0] = i[-1]
     return merged_roads
+
+def get_complete_graph(transformators, houses):
+    combined_nodes = transformators + houses
+    # print(combined_nodes)
+    for i in range(len(combined_nodes)):
+        combined_nodes[i] = tuple(combined_nodes[i])
+
+    G = nx.DiGraph()
+    G.add_nodes_from(combined_nodes)
+    if (len(combined_nodes)) >= 2:
+        #generate all possible unique combinations
+        edges = itertools.combinations(combined_nodes, 2)
+    G.add_edges_from(edges)
+    return G
+
+def find_all_shortest_paths(complete_graph, network):
+    list_of_shortest_paths = []
+    list_of_lengths = []
+
+    for node1, node2 in complete_graph.edges_iter():
+        path, length, graph = find_shortest_path(node1, node2, network)
+        list_of_shortest_paths.append(path)
+        list_of_lengths.append(length)
+    return list_of_shortest_paths, list_of_lengths
+
+def get_edges_for_optimization(complete_graph, network):
+    edges = {(node1, node2): (random.randint(60, 100), find_shortest_path(node1, node2, network)[1], random.randint(1, 20)) for node1, node2 in complete_graph.edges_iter()}
+    return edges
+
+# probability to generate a supply node
+p = 0.3
+
+def random_supply_demand(p):
+    if random.random() <= p:
+        return random.randint(100, 200)
+    else:
+        return random.randint(-50,-10)
+
+def get_nodes_for_optimization(complete_graph):
+    nodes = {node: random_supply_demand(p) for node in complete_graph.nodes_iter()}
+    return nodes
